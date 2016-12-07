@@ -128,6 +128,12 @@ class Server(object):
             ds.append(self.protocol.stun(neighbor))
         return defer.gatherResults(ds).addCallback(handle)
 
+    def dump(self):
+        """
+        Dump the storage
+        """
+        self.storage.dump()
+
     def get(self, key):
         """
         Get a key if the network has it.
@@ -135,6 +141,7 @@ class Server(object):
         Returns:
             :class:`None` if not found, the value otherwise.
         """
+        print("FIXME: getting key '%s' " % (key, ))
         dkey = digest(key)
         # if this node has it, return it
         if self.storage.get(dkey) is not None:
@@ -151,6 +158,7 @@ class Server(object):
         """
         Set the given key to the given value in the network.
         """
+        print("FIXME: setting '%s' = '%s' on network" % (key, value))
         self.log.debug("setting '%s' = '%s' on network" % (key, value))
         dkey = digest(key)
         node = Node(dkey)
@@ -165,6 +173,7 @@ class Server(object):
 
         nearest = self.protocol.router.findNeighbors(node)
         if len(nearest) == 0:
+            print ("There are no known neighbors to set key %s" % key)
             self.log.warning("There are no known neighbors to set key %s" % key)
             return defer.succeed(False)
         spider = NodeSpiderCrawl(self.protocol, node, nearest, self.ksize, self.alpha)

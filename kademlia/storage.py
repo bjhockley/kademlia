@@ -60,6 +60,9 @@ class ForgetfulStorage(object):
         for k, v in self.iteritemsOlderThan(self.ttl):
             self.data.popitem(last=False)
 
+    def dump(self):
+        print "Dumping %s items from ForgetfulStorage: %s " % (len(self.data.values()), self.data.values())
+
     def get(self, key, default=None):
         self.cull()
         if key in self.data:

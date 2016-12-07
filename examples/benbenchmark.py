@@ -59,7 +59,7 @@ class BenchmarkClient(object):
         print "%s of %s reads dispatched; took %s seconds = %s ops/sec  (verified values: %s; failed values %s)" % (read_requests_dispatched, self.loops, ar - aw, self.loops / (1.0 * ar - aw), self.verified_values, len(self.failed_value_names))
 
         if self.failed_value_names:
-            for retry in range(1, 6):
+            for retry in range(1, 2):
                 print "Retry %s: Failed to retrieve previously stored values for %s items: %s " % (retry, len(self.failed_value_names), self.failed_value_names)
 
                 time.sleep(10)
@@ -78,8 +78,12 @@ class BenchmarkClient(object):
                 print "***************** Retrying summary ******************"
                 print "After write/read retry cycle %s, still failed to retrieve previously stored values for %s items: %s " % (retry, len(self.failed_value_names), self.failed_value_names)
 
+                print "Fetching dump...."
+                dumpres = yield self.server.dump()
+                print "Finally, dump result is : %s" %(dumpres,)
         else:
             print "All values verified successfully"
+
         reactor.stop()
 
     @defer.inlineCallbacks
@@ -89,7 +93,7 @@ class BenchmarkClient(object):
 
     @defer.inlineCallbacks
     def read_key_val(self, key, expected_value):
-        result = yield server.get(key)
+        result = yield self.server.get(key)
         if result == expected_value:
             self.verified_values = self.verified_values + 1
         else:

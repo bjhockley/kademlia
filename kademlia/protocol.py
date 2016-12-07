@@ -36,10 +36,18 @@ class KademliaProtocol(RPCProtocol):
         return self.sourceNode.id
 
     def rpc_store(self, sender, nodeid, key, value):
+        self.log.debug("got a store request from %s, storing %s" % (str(sender), value))
         source = Node(nodeid, sender[0], sender[1])
         self.welcomeIfNewNode(source)
         self.log.debug("got a store request from %s, storing value" % str(sender))
         self.storage[key] = value
+        self.log.debug("got a store request from %s, stored %s" % (str(sender), value))
+        return True
+
+    def rpc_dump(self, sender, nodeid):
+        source = Node(nodeid, sender[0], sender[1])
+        self.welcomeIfNewNode(source)
+        self.log.debug("got a dump request from %s" % str(sender))
         return True
 
     def rpc_find_node(self, sender, nodeid, key):
@@ -92,6 +100,7 @@ class KademliaProtocol(RPCProtocol):
         on the new node (per section 2.5 of the paper)
         """
         if self.router.isNewNode(node):
+            print "Welcoming new node %s" % node
             ds = []
             for key, value in self.storage.iteritems():
                 keynode = Node(digest(key))

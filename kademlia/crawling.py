@@ -124,7 +124,9 @@ class NodeSpiderCrawl(SpiderCrawl):
         """
         Find the closest nodes.
         """
-        return self._find(self.protocol.callFindNode)
+        ret =  self._find(self.protocol.callFindNode)
+        # self.log.debug("NodeSpiderCrawl.find returning %s" % ret)
+        return ret
 
     def _nodesFound(self, responses):
         """
