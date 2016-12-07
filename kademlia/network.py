@@ -157,8 +157,8 @@ class Server(object):
 
         def store(nodes):
             self.log.info("setting '%s' on %s" % (key, map(str, nodes)))
-            # if this node is close too, then store here as well
-            if self.node.distanceTo(node) < max([n.distanceTo(node) for n in nodes]):
+            # if there are no other nodes, or if this node is close too, then store here as well
+            if not nodes or self.node.distanceTo(node) < max([n.distanceTo(node) for n in nodes]):
                 self.storage[dkey] = value
             ds = [self.protocol.callStore(n, dkey, value) for n in nodes]
             return defer.DeferredList(ds).addCallback(self._anyRespondSuccess)
