@@ -1,62 +1,117 @@
 from twisted.internet import reactor
 from twisted.internet import defer
-from twisted.python import log
 from kademlia.network import Server
 import time
+import copy
 import sys
+import signal
 
 # time PYTHONPATH=. python examples/benbenchmark.py
 
-
-@defer.inlineCallbacks
-def benchmark(_result, loops):
-    bw = time.time()
-    dfrs = []
-    for i in range(0, loops):
-        #yield write_key_val("a key", "some value")
-        dfrs.append(write_key_val("a key %d" % i, "some value"))
-    dl = defer.DeferredList(dfrs, consumeErrors=True)
-    res = yield dl
-    aw = time.time()
-
-    print "write result:", res
-    write_succs = len([succeeded  for succeeded, result in res if succeeded])
+class BenchmarkClient(object):
+    def __init__(self, server, loops):
+        self.verified_values = 0
+        self.key_vals_to_store = [("a key %d" % i, "some value %s" % i) for i in range(0, loops)]
+        self.failed_value_names = []
+        self.server = server
+        self.loops = loops
 
 
-    dfrs = []
-    for i in range(0, loops):
-        #read_val = yield read_key_val("a key")
-        dfrs.append(read_key_val("a key %d" % i))
-    dl =  defer.DeferredList(dfrs, consumeErrors=True)
-    res = yield dl
-    ar = time.time()
+    @defer.inlineCallbacks
+    def store_many(self, kv_list):
+        """Stores all value v against key k for k, v in kv_list """
+        print "Attempting to store %s (key, val) pairs" % len(kv_list)
+        dfrs = []
+        for k, v in kv_list:
+            dfrs.append(self.write_key_val(k, v))
+        dl =  defer.DeferredList(dfrs, consumeErrors=True)
+        res = yield dl
+        writes_dispatched = len([succeeded  for succeeded, result in res if succeeded])
+        defer.returnValue(writes_dispatched)
 
-    print "read result:", res
-    read_succs = len([succeeded  for succeeded, result in res if succeeded])
-
-
-    print "%s of %s writes succeeded took %s seconds = %s ops/sec" % (write_succs, loops, aw - bw,  loops / (1.0 * aw - bw)  )
-    print "%s of %s reads succeeded and took %s seconds = %s ops/sec" % (read_succs, loops, ar - aw, loops / (1.0 * ar - aw)  )
-
-    #print "Key result:", read_val
-    reactor.stop()
-
-@defer.inlineCallbacks
-def write_key_val(key, val):
-    yield server.set(key, val)
-
-
-@defer.inlineCallbacks
-def read_key_val(key):
-    result = yield server.get(key)
-    defer.returnValue(result)
-
+    @defer.inlineCallbacks
+    def read_and_verify_many(self, kv_list):
+        """Attempts to read all v stored against key k for k, v in kv_list - and
+        keeps score if expected values are missing."""
+        print "Attempting to read and verify %s (key, val) pairs" % len(kv_list)
+        dfrs = []
+        self.verified_values = 0
+        self.failed_value_names = []
+        for k, v in kv_list:
+            dfrs.append(self.read_key_val(k, v))
+        dl =  defer.DeferredList(dfrs, consumeErrors=True)
+        res = yield dl
+        read_requests_dispatched = len([succeeded  for succeeded, result in res if succeeded])
+        defer.returnValue(read_requests_dispatched)
 
 
-server = Server()
-server.listen(5678)
-server.bootstrap([('127.0.0.1', 8468)]).addCallback(benchmark, 500)
+    @defer.inlineCallbacks
+    def benchmark(self, _result):
+        bw = time.time()
+        writes_dispatched = yield self.store_many(self.key_vals_to_store)
+        aw = time.time()
+        print "Successfully dispatched %s write requests" % writes_dispatched
 
-reactor.run()
+        read_requests_dispatched = yield self.read_and_verify_many(self.key_vals_to_store)
+        ar = time.time()
+        print "Successfully dispatched %s read requests" % read_requests_dispatched
+        print "%s of %s writes dispatched; took %s seconds = %s ops/sec" % (writes_dispatched, self.loops, aw - bw,  self.loops / (1.0 * aw - bw)  )
+        print "%s of %s reads dispatched; took %s seconds = %s ops/sec  (verified values: %s; failed values %s)" % (read_requests_dispatched, self.loops, ar - aw, self.loops / (1.0 * ar - aw), self.verified_values, len(self.failed_value_names))
+
+        if self.failed_value_names:
+            for retry in range(1, 6):
+                print "Retry %s: Failed to retrieve previously stored values for %s items: %s " % (retry, len(self.failed_value_names), self.failed_value_names)
+
+                time.sleep(10)
+                print "***************** Retrying writes which failed verification ******************"
+                failed_value_names_copy = copy.copy(self.failed_value_names)
+                writes_dispatched = yield self.store_many(failed_value_names_copy)
+                aw = time.time()
+                print "Successfully dispatched %s (repeat)  write requests" % writes_dispatched
+
+                time.sleep(5)
+                print "***************** Retrying read ******************"
+                read_requests_dispatched = yield self.read_and_verify_many(failed_value_names_copy)
+                ar = time.time()
+
+                print "Successfully dispatched %s (repeated) read requests" % read_requests_dispatched
+                print "***************** Retrying summary ******************"
+                print "After write/read retry cycle %s, still failed to retrieve previously stored values for %s items: %s " % (retry, len(self.failed_value_names), self.failed_value_names)
+
+        else:
+            print "All values verified successfully"
+        reactor.stop()
+
+    @defer.inlineCallbacks
+    def write_key_val(self, key, val):
+        yield self.server.set(key, val)
+
+
+    @defer.inlineCallbacks
+    def read_key_val(self, key, expected_value):
+        result = yield server.get(key)
+        if result == expected_value:
+            self.verified_values = self.verified_values + 1
+        else:
+            print  "Unexpected value read(k='%s'): got v='%s'; expected='%s'" % (key, result, expected_value)
+            self.failed_value_names.append((key, expected_value))
+        defer.returnValue(result)
+
+
+if __name__ == '__main__':
+    n_transactions = 5
+    if len(sys.argv) > 1:
+        n_transactions = int(sys.argv[1])
+
+
+    def signal_handler(signal, frame):
+        print('You pressed Ctrl+C!')
+        reactor.callFromThread(reactor.stop)
+    signal.signal(signal.SIGINT, signal_handler)
+    server = Server()
+    client = BenchmarkClient(server, n_transactions)
+    server.listen(5678)
+    server.bootstrap([('127.0.0.1', 8468)]).addCallback(client.benchmark)
+    reactor.run()
 
 
