@@ -35,6 +35,7 @@ class FakeProtocol(object):
         return ids
 
     def rpc_ping(self, sender, nodeid):
+        self.log.debug("got rpc_ping from %s" % str(sender))
         source = Node(nodeid, sender[0], sender[1])
         self.router.addContact(source)
         return self.sourceID

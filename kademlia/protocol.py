@@ -9,7 +9,7 @@ from kademlia.routing import RoutingTable
 from kademlia.log import Logger
 from kademlia.utils import digest
 
-RPC_WAIT_TIMEOUT = 15 # Consider it a connection failure if no response within this time window.
+RPC_WAIT_TIMEOUT = 5 # Consider it a connection failure if no response within this time window.
 
 class KademliaProtocol(RPCProtocol):
     def __init__(self, sourceNode, storage, ksize):
@@ -101,7 +101,7 @@ class KademliaProtocol(RPCProtocol):
         on the new node (per section 2.5 of the paper)
         """
         if self.router.isNewNode(node):
-            print "Welcoming new node %s" % node
+            self.log.debug("Welcoming new node %s" % node)
             ds = []
             for key, value in self.storage.iteritems():
                 keynode = Node(digest(key))
