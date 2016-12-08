@@ -1,10 +1,14 @@
 from twisted.internet import reactor
 from twisted.internet import defer
 from kademlia.network import Server
+from kademlia.log import Logger
 import time
 import copy
 import sys
 import signal
+from twisted.python import log
+
+log.startLogging(sys.stdout)
 
 # time PYTHONPATH=. python examples/benbenchmark.py
 
@@ -15,12 +19,13 @@ class BenchmarkClient(object):
         self.failed_value_names = []
         self.server = server
         self.loops = loops
+        self.log = Logger(system=self)
 
 
     @defer.inlineCallbacks
     def store_many(self, kv_list):
         """Stores all value v against key k for k, v in kv_list """
-        print "Attempting to store %s (key, val) pairs" % len(kv_list)
+        self.log.debug("Attempting to store %s (key, val) pairs" % len(kv_list))
         dfrs = []
         for k, v in kv_list:
             dfrs.append(self.write_key_val(k, v))
@@ -33,7 +38,7 @@ class BenchmarkClient(object):
     def read_and_verify_many(self, kv_list):
         """Attempts to read all v stored against key k for k, v in kv_list - and
         keeps score if expected values are missing."""
-        print "Attempting to read and verify %s (key, val) pairs" % len(kv_list)
+        self.log.debug("Attempting to read and verify %s (key, val) pairs" % len(kv_list))
         dfrs = []
         self.verified_values = 0
         self.failed_value_names = []
@@ -50,39 +55,39 @@ class BenchmarkClient(object):
         bw = time.time()
         writes_dispatched = yield self.store_many(self.key_vals_to_store)
         aw = time.time()
-        print "Successfully dispatched %s write requests" % writes_dispatched
+        self.log.debug("Successfully dispatched %s write requests" % writes_dispatched)
 
         read_requests_dispatched = yield self.read_and_verify_many(self.key_vals_to_store)
         ar = time.time()
-        print "Successfully dispatched %s read requests" % read_requests_dispatched
-        print "%s of %s writes dispatched; took %s seconds = %s ops/sec" % (writes_dispatched, self.loops, aw - bw,  self.loops / (1.0 * aw - bw)  )
-        print "%s of %s reads dispatched; took %s seconds = %s ops/sec  (verified values: %s; failed values %s)" % (read_requests_dispatched, self.loops, ar - aw, self.loops / (1.0 * ar - aw), self.verified_values, len(self.failed_value_names))
+        self.log.debug("Successfully dispatched %s read requests" % read_requests_dispatched)
+        self.log.debug("%s of %s writes dispatched; took %s seconds = %s ops/sec" % (writes_dispatched, self.loops, aw - bw,  self.loops / (1.0 * aw - bw)  ))
+        self.log.debug("%s of %s reads dispatched; took %s seconds = %s ops/sec  (verified values: %s; failed values %s)" % (read_requests_dispatched, self.loops, ar - aw, self.loops / (1.0 * ar - aw), self.verified_values, len(self.failed_value_names)))
 
         if self.failed_value_names:
             for retry in range(1, 2):
-                print "Retry %s: Failed to retrieve previously stored values for %s items: %s " % (retry, len(self.failed_value_names), self.failed_value_names)
+                self.log.debug("Retry %s: Failed to retrieve previously stored values for %s items: %s " % (retry, len(self.failed_value_names), self.failed_value_names))
 
                 time.sleep(10)
-                print "***************** Retrying writes which failed verification ******************"
+                self.log.debug("***************** Retrying writes which failed verification ******************")
                 failed_value_names_copy = copy.copy(self.failed_value_names)
                 writes_dispatched = yield self.store_many(failed_value_names_copy)
                 aw = time.time()
-                print "Successfully dispatched %s (repeat)  write requests" % writes_dispatched
+                self.log.debug("Successfully dispatched %s (repeat)  write requests" % writes_dispatched)
 
                 time.sleep(5)
-                print "***************** Retrying read ******************"
+                self.log.debug("***************** Retrying read ******************")
                 read_requests_dispatched = yield self.read_and_verify_many(failed_value_names_copy)
                 ar = time.time()
 
-                print "Successfully dispatched %s (repeated) read requests" % read_requests_dispatched
-                print "***************** Retrying summary ******************"
-                print "After write/read retry cycle %s, still failed to retrieve previously stored values for %s items: %s " % (retry, len(self.failed_value_names), self.failed_value_names)
+                self.log.debug("Successfully dispatched %s (repeated) read requests" % read_requests_dispatched)
+                self.log.debug("***************** Retrying summary ******************")
+                self.log.debug("After write/read retry cycle %s, still failed to retrieve previously stored values for %s items: %s " % (retry, len(self.failed_value_names), self.failed_value_names))
 
-                print "Fetching dump...."
-                dumpres = yield self.server.dump()
-                print "Finally, dump result is : %s" %(dumpres,)
+                #self.log.debug("Fetching dump....")
+                #dumpres = yield self.server.dump()
+                #self.log.debug("Finally, dump result is : %s" %(dumpres,))
         else:
-            print "All values verified successfully"
+            self.log.debug("All values verified successfully")
 
         reactor.stop()
 
@@ -97,7 +102,7 @@ class BenchmarkClient(object):
         if result == expected_value:
             self.verified_values = self.verified_values + 1
         else:
-            print  "Unexpected value read(k='%s'): got v='%s'; expected='%s'" % (key, result, expected_value)
+            self.log.debug( "Unexpected value read(k='%s'): got v='%s'; expected='%s'" % (key, result, expected_value))
             self.failed_value_names.append((key, expected_value))
         defer.returnValue(result)
 

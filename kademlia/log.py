@@ -1,4 +1,5 @@
 import sys
+import os
 from twisted.python import log
 
 INFO = 5
@@ -29,7 +30,10 @@ class Logger:
         kw.update(self.kwargs)
         if 'system' in kw and not isinstance(kw['system'], str):
             kw['system'] = kw['system'].__class__.__name__
-        log.msg(message, **kw)
+        current_pid = os.getpid()
+        preamble = 'PID="%s" ' % current_pid
+
+        log.msg(preamble + message, **kw)
 
     def info(self, message, **kw):
         kw['loglevel'] = INFO

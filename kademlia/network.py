@@ -141,7 +141,8 @@ class Server(object):
         Returns:
             :class:`None` if not found, the value otherwise.
         """
-        print("FIXME: getting key '%s' " % (key, ))
+        #print("FIXME: getting key '%s' " % (key, ))
+        self.log.debug("getting key '%s'" % (key,))
         dkey = digest(key)
         # if this node has it, return it
         if self.storage.get(dkey) is not None:
@@ -158,7 +159,7 @@ class Server(object):
         """
         Set the given key to the given value in the network.
         """
-        print("FIXME: setting '%s' = '%s' on network" % (key, value))
+        #print("FIXME: setting '%s' = '%s' on network" % (key, value))
         self.log.debug("setting '%s' = '%s' on network" % (key, value))
         dkey = digest(key)
         node = Node(dkey)
