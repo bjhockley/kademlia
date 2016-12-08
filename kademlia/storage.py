@@ -7,6 +7,7 @@ from collections import OrderedDict
 
 from zope.interface import implements
 from zope.interface import Interface
+from kademlia.log import Logger
 
 
 class IStorage(Interface):
@@ -47,17 +48,20 @@ class ForgetfulStorage(object):
         """
         By default, max age is a week.
         """
+        self.log = Logger(system=self)
         self.data = OrderedDict()
         self.ttl = ttl
 
     def __setitem__(self, key, value):
         if key in self.data:
             del self.data[key]
+        self.log.debug("ForgetfulStorage: storing  a value : %s" % value)
         self.data[key] = (time.time(), value)
         self.cull()
 
     def cull(self):
         for k, v in self.iteritemsOlderThan(self.ttl):
+            self.log.debug("culling a value : %s" % v)
             self.data.popitem(last=False)
 
     def dump(self):

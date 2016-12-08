@@ -9,10 +9,11 @@ from kademlia.routing import RoutingTable
 from kademlia.log import Logger
 from kademlia.utils import digest
 
+RPC_WAIT_TIMEOUT = 15 # Consider it a connection failure if no response within this time window.
 
 class KademliaProtocol(RPCProtocol):
     def __init__(self, sourceNode, storage, ksize):
-        RPCProtocol.__init__(self)
+        RPCProtocol.__init__(self, waitTimeout=RPC_WAIT_TIMEOUT)
         self.router = RoutingTable(self, ksize, sourceNode)
         self.storage = storage
         self.sourceNode = sourceNode
@@ -119,8 +120,9 @@ class KademliaProtocol(RPCProtocol):
         we get no response, make sure it's removed from the routing table.
         """
         if result[0]:
-            self.log.info("got response from %s, adding to router" % node)
-            self.welcomeIfNewNode(node)
+            if self.router.isNewNode(node):
+                self.log.info("got response from %s, adding to router" % node)
+                self.welcomeIfNewNode(node)
         else:
             self.log.debug("no response from %s, removing from router" % node)
             self.router.removeContact(node)
