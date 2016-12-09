@@ -15,6 +15,8 @@ from kademlia.node import Node
 from kademlia.crawling import ValueSpiderCrawl
 from kademlia.crawling import NodeSpiderCrawl
 
+class NoNodes(Exception):
+    pass
 
 class Server(object):
     """
@@ -169,7 +171,10 @@ class Server(object):
         node = Node(dkey)
 
         def store(nodes):
+            # FIXME: how come NodeSpiderCrawl is giving us an empty list of nodes?
             self.log.info("setting '%s' on %s" % (key, map(str, nodes)))
+            if not nodes:
+                return defer.fail(NoNodes("No nodes"))
             # Iif this node is close too, then store here as well
             # if not nodes or self.node.distanceTo(node) < max([n.distanceTo(node) for n in nodes]):
             if self.node.distanceTo(node) < max([n.distanceTo(node) for n in nodes]):

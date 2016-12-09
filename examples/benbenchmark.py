@@ -33,6 +33,8 @@ class BenchmarkClient(object):
         dl =  defer.DeferredList(dfrs, consumeErrors=True)
         res = yield dl
         writes_dispatched = len([succeeded  for succeeded, result in res if succeeded])
+        write_failure_results = [result  for _succeeded, result in res if not succeeded]
+        self.log.debug("%s write failures : %s" % (len(write_failure_results), write_failure_results))
         defer.returnValue(writes_dispatched)
 
     @defer.inlineCallbacks
@@ -91,7 +93,7 @@ class BenchmarkClient(object):
         read_requests_dispatched = yield self.read_and_verify_many(self.key_vals_to_store)
         ar = time.time()
         self.log.debug("Successfully dispatched %s read requests" % read_requests_dispatched)
-        self.log.debug("%s of %s writes dispatched; took %s seconds = %s ops/sec" % (writes_dispatched, self.loops, aw - bw,  self.loops / (1.0 * aw - bw)  ))
+        self.log.debug("%s of %s writes dispatched; took %s seconds = %s ops/sec" % (writes_dispatched, self.loops, aw - bw,  writes_dispatched / (1.0 * aw - bw)  ))
         self.log.debug("%s of %s reads dispatched; took %s seconds = %s ops/sec  (verified values: %s; failed values %s)" % (read_requests_dispatched, self.loops, ar - aw, self.loops / (1.0 * ar - aw), self.verified_values, len(self.failed_value_names)))
 
         if self.failed_value_names:
