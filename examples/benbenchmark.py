@@ -134,8 +134,10 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
     server = Server()
     client = BenchmarkClient(server, n_transactions)
-    server.listen(5678)
-    server.bootstrap([('127.0.0.1', 8468)], fixed_supernode_addrs=[('127.0.0.1', 8468)]).addCallback(client.benchmark)
+    server.listen(8880)
+    bootstrap_addrs = [("127.0.0.1", port ) for port in [8881, 8882, 8883]]
+
+    server.bootstrap(bootstrap_addrs, fixed_supernode_addrs=bootstrap_addrs).addCallback(client.benchmark)
     reactor.run()
 
 
