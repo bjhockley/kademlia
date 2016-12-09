@@ -52,7 +52,7 @@ class BenchmarkClient(object):
 
     @defer.inlineCallbacks
     def retry_writes_and_reads(self):
-        for retry in range(1, 2):
+        for retry in range(1, 6):
             yield self._sleep(6)
             self.log.debug("***************** Retrying failures ******************")
             self.log.debug("Retry %s: Failed to retrieve previously stored values for %s items: %s " % (retry, len(self.failed_value_names), self.failed_value_names))
