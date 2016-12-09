@@ -133,9 +133,11 @@ class NodeSpiderCrawl(SpiderCrawl):
         Handle the result of an iteration in _find.
         """
         toremove = []
+
         for peerid, response in responses.items():
             response = RPCFindResponse(response)
             if not response.happened():
+                self.log.warning("NodeSpiderCrawl did not get response from peer %s" % (peerid,))
                 toremove.append(peerid)
             else:
                 self.nearest.push(response.getNodeList())
