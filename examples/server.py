@@ -2,6 +2,7 @@ from twisted.internet import reactor
 import sys, os, signal
 sys.path.append(os.path.dirname(__file__))
 from kademlia.network import Server
+from kademlia.log import Logger
 from twisted.python import log
 log.startLogging(sys.stdout)
 
@@ -16,11 +17,11 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         n_transactions = int(sys.argv[1])
 
-
     server = Server()
+    klog = Logger(system=server)
     def signal_handler(signal, frame):
-        print('You pressed Ctrl+C!')
-        print ("In the end %s values stored on local node" % len(server.storage.data))
+        klog.debug('You pressed Ctrl+C!')
+        klog.debug ("In the end %s values stored on this server" % len(server.storage.data))
         reactor.callFromThread(reactor.stop)
     signal.signal(signal.SIGINT, signal_handler)
     #client = BenchmarkClient(server, n_transactions)

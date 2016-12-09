@@ -98,7 +98,7 @@ class BenchmarkClient(object):
             yield self.retry_writes_and_reads()
         else:
             self.log.debug("All values verified successfully")
-        self.log.debug("In the end %s values stored on local node" % len(self.server.storage.data))
+        self.log.debug("In the end %s values stored on this client node" % len(self.server.storage.data))
 
         reactor.stop()
 
