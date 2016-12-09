@@ -18,6 +18,7 @@ class KademliaProtocol(RPCProtocol):
         self.storage = storage
         self.sourceNode = sourceNode
         self.log = Logger(system=self)
+        self.fixed_supernode_addrs = set([])
 
     def getRefreshIDs(self):
         """
@@ -124,6 +125,23 @@ class KademliaProtocol(RPCProtocol):
                 self.log.info("got response from %s, adding to router" % node)
                 self.welcomeIfNewNode(node)
         else:
-            self.log.debug("no response from %s, removing from router" % node)
-            self.router.removeContact(node)
+            node_addr = (node.ip, node.port)
+            if node_addr in self.fixed_supernode_addrs:
+                self.log.debug("no response from %s, leaving node in router anyway because it is a fixed supernode" % node)
+            else:
+                self.log.debug("no response from %s, removing from router" % node)
+                self.router.removeContact(node)
         return result
+
+    def setFixedSupernodes(self, fixed_supernode_addrs):
+        """
+        Sets a list of fixed/"permanent"/static  members of the DHT network.
+
+        'Fixed Supernodes' aren't really a kademlia concept; however, in our application
+        we have the luxury of knowing about a good number of "should always be present" nodes.
+
+        If they aren't reachable (network partition) or responsive we shouldn't assume that
+        they've gone away permanently.
+
+        """
+        self.fixed_supernode_addrs = set(fixed_supernode_addrs)

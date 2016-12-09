@@ -98,6 +98,7 @@ class BenchmarkClient(object):
             yield self.retry_writes_and_reads()
         else:
             self.log.debug("All values verified successfully")
+        self.log.debug("In the end %s values stored on local node" % len(self.server.storage.data))
 
         reactor.stop()
 
@@ -134,7 +135,7 @@ if __name__ == '__main__':
     server = Server()
     client = BenchmarkClient(server, n_transactions)
     server.listen(5678)
-    server.bootstrap([('127.0.0.1', 8468)]).addCallback(client.benchmark)
+    server.bootstrap([('127.0.0.1', 8468)], fixed_supernode_addrs=[('127.0.0.1', 8468)]).addCallback(client.benchmark)
     reactor.run()
 
 

@@ -86,7 +86,7 @@ class Server(object):
         neighbors = self.protocol.router.findNeighbors(self.node)
         return [ tuple(n)[-2:] for n in neighbors ]
 
-    def bootstrap(self, addrs):
+    def bootstrap(self, addrs, fixed_supernode_addrs=None):
         """
         Bootstrap the server by connecting to other known nodes in the network.
 
@@ -98,6 +98,8 @@ class Server(object):
         if self.protocol.transport is None:
             return task.deferLater(reactor, 1, self.bootstrap, addrs)
 
+        if fixed_supernode_addrs is not None:
+            self.protocol.setFixedSupernodes(fixed_supernode_addrs)
         def initTable(results):
             nodes = []
             for addr, result in results.items():
@@ -109,6 +111,7 @@ class Server(object):
         ds = {}
         for addr in addrs:
             ds[addr] = self.protocol.ping(addr, self.node.id)
+
         return deferredDict(ds).addCallback(initTable)
 
     def inetVisibleIP(self):
