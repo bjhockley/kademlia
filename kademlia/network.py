@@ -100,6 +100,7 @@ class Server(object):
 
         if fixed_supernode_addrs is not None:
             self.protocol.setFixedSupernodes(fixed_supernode_addrs)
+
         def initTable(results):
             nodes = []
             for addr, result in results.items():
